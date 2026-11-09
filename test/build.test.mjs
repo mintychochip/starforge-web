@@ -188,3 +188,38 @@ describe('site build', () => {
     assert.doesNotMatch(html, /ste-sources/);
   });
 });
+
+describe('site build under a subdirectory', () => {
+  const PREFIX = '/starforge-web/';
+  let subDir;
+
+  before(async () => {
+    if (!docsAvailable) return;
+    subDir = await mkdtemp(join(tmpdir(), 'starforge-web-sub-'));
+    await build({
+      docsRoot: DOCS_ROOT,
+      outDir: subDir,
+      base: PREFIX,
+      diagrams: false,
+      verbose: false,
+    });
+  });
+
+  after(async () => {
+    if (subDir) await rm(subDir, { recursive: true, force: true });
+  });
+
+  gated('prefixes every root-absolute link and image source', async () => {
+    const files = await readdir(subDir, { recursive: true });
+    for (const file of files.filter((name) => name.endsWith('.html'))) {
+      const html = await readFile(join(subDir, file), 'utf8');
+      for (const match of html.matchAll(/(?:href|src)="([^"]+)"/g)) {
+        const target = match[1];
+        if (/^(?:https?:|mailto:|#|data:)/.test(target)) continue;
+        assert.ok(target.startsWith(PREFIX), `${file} -> ${target} misses ${PREFIX}`);
+        const path = target.slice(PREFIX.length).split('#')[0];
+        if (path) assert.ok(files.includes(path), `${file} -> ${target} does not exist`);
+      }
+    }
+  });
+});
