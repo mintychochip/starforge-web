@@ -23,21 +23,19 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Install dependencies
-        run: npm ci
-      - name: Cache the mermaid browser
+      # puppeteer's postinstall downloads Chrome into ~/.cache/puppeteer, so
+      # restore the cache before `npm ci`, not after.
+      - name: Cache the diagram renderer browser
         uses: actions/cache@v4
         with:
           path: ~/.cache/puppeteer
           key: puppeteer-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
-      - name: Install the mermaid browser
-        run: npx puppeteer browsers install chrome
+      - name: Install dependencies
+        run: npm ci
       - name: Test the pipeline
         run: npm test
       - name: Build the site
-        run: npm run build -- --repo-url=${{ github.server_url }}/${{ github.repository_owner }}/starforge
-        env:
-          STARFORGE_DIAGRAMS: 1
+        run: npm run build
       - name: Test the built site with diagrams
         run: npm run test:diagrams
       - name: Upload the site

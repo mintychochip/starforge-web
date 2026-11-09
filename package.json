@@ -22,6 +22,7 @@
     "shiki": "^4.6.0"
   },
   "devDependencies": {
-    "@mermaid-js/mermaid-cli": "^11.17.1"
+    "@mermaid-js/mermaid-cli": "^11.17.1",
+    "puppeteer": "^25.16.0"
   }
 }
