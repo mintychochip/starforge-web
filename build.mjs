@@ -460,6 +460,7 @@ async function main() {
       .filter(Boolean)
       .join(', ');
     console.log(`built ${report.outDir} (${summary})`);
+    console.log(`docs: ${report.docsRoot} (${report.version ? `version ${report.version}` : 'no version marker'})`);
     for (const warning of report.warnings) console.warn(`warning: ${warning}`);
     if (report.dropped.length) {
       console.warn(`dropped ${report.dropped.length} unresolvable link(s)`);
