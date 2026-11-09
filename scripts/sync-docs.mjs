@@ -8,7 +8,7 @@
  * Only `user/`, `admin/`, `technical/`, and `format/` are copied. Plans and
  * specs under `docs/superpowers/` stay out of the site.
  */
-import { cp, mkdir, readdir, rm, stat } from 'node:fs/promises';
+import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -57,6 +57,17 @@ async function main() {
   }
 
   console.log(`synced ${count} markdown files from ${source} into ${target}`);
+
+  // Record the Starforge version the copies came from, so the site footer
+  // names the release and not this repository's own version.
+  const manifest = await readFile(join(source, '..', 'Cargo.toml'), 'utf8').catch(() => null);
+  const version = manifest?.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
+  if (version) {
+    await writeFile(join(target, 'VERSION'), `${version}\n`, 'utf8');
+    console.log(`recorded Starforge version ${version}`);
+  } else {
+    console.error(`no workspace version in ${join(source, '..', 'Cargo.toml')}`);
+  }
 }
 
 main().catch((error) => {

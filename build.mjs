@@ -86,21 +86,22 @@ function run(command, args, { cwd } = {}) {
   });
 }
 
-/** Read the workspace version out of the starforge checkout, when present. */
+/** Read the Starforge version: the vendored marker, then the checkout. */
 export async function detectVersion(docsRoot) {
+  try {
+    const marker = (await readFile(join(docsRoot, 'VERSION'), 'utf8')).trim();
+    if (marker) return marker;
+  } catch {
+    // No vendored marker; fall through to the checkout manifest.
+  }
   try {
     const manifest = await readFile(join(docsRoot, '..', 'Cargo.toml'), 'utf8');
     const match = manifest.match(/^version\s*=\s*"([^"]+)"/m);
     if (match) return match[1];
   } catch {
-    // No checkout next to the docs; fall through to the package version.
+    // No checkout next to the docs either.
   }
-  try {
-    const pkg = JSON.parse(await readFile(join(HERE, 'package.json'), 'utf8'));
-    return pkg.version ?? null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 async function createHighlighter() {

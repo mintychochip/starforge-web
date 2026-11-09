@@ -57,8 +57,10 @@ checkout whenever the documents change:
 npm run sync-docs -- --docs=/path/to/starforge/docs
 ```
 
-Only `user/`, `admin/`, `technical/`, and `format/` are copied. Plans and
-specs under `docs/superpowers/` are not published.
+Only `user/`, `admin/`, `technical/`, and `format/` are copied, plus a
+`VERSION` file that records the workspace version the copies came from; the
+footer shows that version. Override it with `--version=`. Plans and specs
+under `docs/superpowers/` are not published.
 
 ## How the pages are produced
 
