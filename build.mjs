@@ -150,12 +150,13 @@ function makeHighlight(highlighter, { base, verbose }) {
 const MMDC = join(HERE, 'node_modules', '.bin', 'mmdc');
 const LICENSE_FILES = ['LICENSE-AGPL-3.0', 'LICENSE-MIT', 'LICENSE-APACHE-2.0'];
 const PUPPETEER_CONFIG = join(HERE, 'puppeteer.json');
+const DIAGRAM_ATTEMPTS = 2;
 
-async function renderDiagram(source, outFile, theme) {
-  await mkdir(dirname(outFile), { recursive: true });
+async function renderOnce(source, outFile, theme) {
   // Per-output input name: two builds writing the same diagrams directory
   // must not share a scratch file.
   const tmpInput = `${outFile}.mmd`;
+  await mkdir(dirname(outFile), { recursive: true });
   await writeFile(tmpInput, `${source}\n`, 'utf8');
   const result = await run(
     MMDC,
@@ -173,6 +174,21 @@ async function renderDiagram(source, outFile, theme) {
   if (result.code !== 0) {
     throw new Error(`mmdc failed for ${outFile}: ${(result.stderr || result.stdout).trim().slice(-400)}`);
   }
+}
+
+async function renderDiagram(source, outFile, theme) {
+  let lastError;
+  // The browser occasionally fails to start on a loaded machine; one retry
+  // keeps a transient failure from turning a diagram into plain source text.
+  for (let attempt = 0; attempt < DIAGRAM_ATTEMPTS; attempt += 1) {
+    try {
+      await renderOnce(source, outFile, theme);
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 /** Pull width/height out of a rendered SVG so the page reserves layout space. */

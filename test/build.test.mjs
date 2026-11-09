@@ -1,11 +1,11 @@
 import { after, before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { access, mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join, posix } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { build } from '../build.mjs';
-import { SECTIONS } from '../src/docs.mjs';
+import { build, detectVersion } from '../build.mjs';
+import { SECTIONS, loadDocs } from '../src/docs.mjs';
 
 const DOCS_ROOT =
   process.env.STARFORGE_DOCS ??
@@ -145,9 +145,22 @@ describe('site build', () => {
   });
 
   gated('links the previous and next page in reading order', async () => {
-    const html = await readPage(`${BASE}user/sessions.html`);
-    assert.match(html, /class="pager"/);
-    assert.match(html, /Next/);
+    const { pages } = await loadDocs(DOCS_ROOT, BASE);
+    // Two mid-order pages, including one that crosses a section boundary.
+    for (const index of [1, pages.length - 1]) {
+      const page = pages[index];
+      const html = await readPage(`${BASE}${page.slug}.html`);
+      assert.match(html, /class="pager"/, `${page.rel} has no pager`);
+      const prev = pages[index - 1];
+      const next = pages[index + 1];
+      if (prev) {
+        assert.match(html, new RegExp(`<a class="prev" href="${prev.url}"`), `${page.rel} prev is not ${prev.rel}`);
+      }
+      if (next) {
+        assert.match(html, new RegExp(`<a class="next" href="${next.url}"`), `${page.rel} next is not ${next.rel}`);
+      }
+    }
+    assert.equal(pages.at(-1).rel, 'format/ci-v1.md', 'reading order ends on the last format page');
   });
 
   gated('lists every page on the landing page', async () => {
@@ -186,6 +199,32 @@ describe('site build', () => {
   gated('keeps the ste-sources bookkeeping comment out of the output', async () => {
     const html = await readPage(`${BASE}technical/crates.html`);
     assert.doesNotMatch(html, /ste-sources/);
+  });
+});
+
+describe('version', () => {
+  it('prefers the vendored marker over the neighbouring manifest', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'starforge-web-version-'));
+    try {
+      const docs = join(root, 'docs');
+      await mkdir(docs, { recursive: true });
+      await writeFile(join(root, 'Cargo.toml'), 'version = "1.2.3"\n', 'utf8');
+      assert.equal(await detectVersion(docs), '1.2.3', 'falls back to the checkout manifest');
+
+      await writeFile(join(docs, 'VERSION'), '9.8.7\n', 'utf8');
+      assert.equal(await detectVersion(docs), '9.8.7', 'the vendored marker wins');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('reports no version rather than this repository\'s own', async () => {
+    const docs = await mkdtemp(join(tmpdir(), 'starforge-web-noversion-'));
+    try {
+      assert.equal(await detectVersion(docs), null);
+    } finally {
+      await rm(docs, { recursive: true, force: true });
+    }
   });
 });
 

@@ -40,7 +40,7 @@ jobs:
         # SITE_BASE_PATH repository variable when the site moves elsewhere.
         env:
           SITE_BASE_PATH: ${{ vars.SITE_BASE_PATH }}
-        run: npm run build -- --base="${SITE_BASE_PATH:-/${{ github.event.repository.name }}/}"
+        run: npm run build -- --base="${SITE_BASE_PATH:-/${{ github.event.repository.name }}/}" --diagrams=strict
       - name: Test the built site with diagrams
         run: npm run test:diagrams
       - name: Upload the site
